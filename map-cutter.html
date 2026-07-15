@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Preparador de Impressão de Mapas de RPG (v2)</title>
+    <style>
+      /* --- ESTILOS DA INTERFACE (TELA) --- */
+      :root {
+        --primary: #5c2c16;
+        --primary-hover: #7d3c1e;
+        --bg-dark: #1e1e24;
+        --bg-light: #2a2a35;
+        --text-light: #f4f4f9;
+        --accent: #d4a373;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: var(--bg-dark);
+        color: var(--text-light);
+        margin: 0;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      header h1 {
+        color: var(--accent);
+        margin-bottom: 5px;
+        font-size: 2rem;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+      }
+
+      .container {
+        width: 100%;
+        max-width: 1200px;
+        background-color: var(--bg-light);
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        box-sizing: border-box;
+      }
+
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 15px;
+        border-radius: 6px;
+        border: 1px solid #444;
+      }
+
+      .control-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .control-group label {
+        font-size: 0.9rem;
+        margin-bottom: 5px;
+        color: var(--accent);
+        font-weight: bold;
+      }
+
+      .control-group input[type="number"],
+      .control-group input[type="file"] {
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #555;
+        background-color: #333;
+        color: white;
+        font-size: 1rem;
+      }
+
+      .btn-print {
+        grid-column: 1 / -1;
+        background-color: var(--primary);
+        color: white;
+        border: none;
+        padding: 12px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.2s;
+        margin-top: 10px;
+      }
+
+      .btn-print:hover {
+        background-color: var(--primary-hover);
+      }
+
+      /* --- CONTAINER DE PRÉVIA --- */
+      .preview-section {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .preview-section h2 {
+        color: var(--accent);
+        margin-bottom: 15px;
+      }
+
+      #preview-grid {
+        display: grid;
+        gap: 15px;
+        background-color: #111;
+        padding: 15px;
+        border-radius: 8px;
+        border: 2px dashed #666;
+        max-width: 100%;
+        overflow-x: auto;
+        box-sizing: border-box;
+      }
+
+      .preview-page {
+        background-color: white;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        position: relative;
+        overflow: hidden;
+        aspect-ratio: 210 / 297;
+        width: 180px;
+      }
+
+      .preview-page-img {
+        position: absolute;
+        transform-origin: top left;
+      }
+
+      /* Margem de colagem (área branca com borda pontilhada) */
+      .overlap-mask {
+        position: absolute;
+        pointer-events: none;
+        box-sizing: border-box;
+        background-color: white; /* Branca para colar por cima ou cortar */
+        border: 1px dashed #777;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+        color: #555;
+        font-family: sans-serif;
+        overflow: hidden;
+      }
+
+      /* --- ELEMENTOS DE IMPRESSÃO REAL (OCULTOS NA TELA) --- */
+      #print-container {
+        display: none;
+      }
+
+      /* --- REGRAS DE IMPRESSÃO (CSS @media print) --- */
+      @media print {
+        body * {
+          visibility: hidden;
+        }
+        #print-container,
+        #print-container * {
+          visibility: visible;
+        }
+        #print-container {
+          display: block !important;
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          margin: 0;
+          padding: 0;
+          background: white;
+        }
+        .print-page {
+          position: relative;
+          width: 210mm;
+          height: 297mm;
+          page-break-after: always;
+          overflow: hidden;
+          box-sizing: border-box;
+          background-color: white;
+        }
+        .print-page-img {
+          position: absolute;
+          transform-origin: top left;
+        }
+        .print-overlap-mask {
+          position: absolute;
+          pointer-events: none;
+          box-sizing: border-box;
+          background-color: white; /* Deixa a área de colagem 100% branca na impressão */
+          border: 0.5mm dashed #999; /* Guia de corte discreta */
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 8pt;
+          color: #666;
+          font-family: sans-serif;
+          overflow: hidden;
+        }
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>RPG Map Printer</h1>
+      <p>
+        Divida seus mapas gigantes em folhas A4 com margem para colagem em
+        branco (fácil corte e sobreposição).
+      </p>
+    </header>
+
+    <div class="container">
+      <div class="controls">
+        <div class="control-group">
+          <label for="map-upload">1. Upload do Mapa (Imagem)</label>
+          <input type="file" id="map-upload" accept="image/*" />
+        </div>
+
+        <div class="control-group">
+          <label for="cols">2. Páginas na Horizontal (Colunas)</label>
+          <input type="number" id="cols" value="2" min="1" />
+        </div>
+
+        <div class="control-group">
+          <label for="rows">3. Páginas na Vertical (Linhas)</label>
+          <input type="number" id="rows" value="2" min="1" />
+        </div>
+
+        <div class="control-group">
+          <label for="overlap">4. Margem de Sobreposição (mm)</label>
+          <input type="number" id="overlap" value="10" min="0" max="50" />
+        </div>
+
+        <button class="btn-print" id="btn-print-trigger" disabled>
+          Imprimir Mapa
+        </button>
+      </div>
+
+      <div class="preview-section">
+        <h2>Prévia de Impressão</h2>
+        <p
+          style="
+            font-size: 0.9rem;
+            color: var(--accent);
+            margin-top: 0;
+            margin-bottom: 15px;
+          "
+        >
+          As áreas com bordas tracejadas e fundo branco representam as margens
+          de colagem/corte.
+        </p>
+        <div id="preview-grid">
+          <p style="color: #888; padding: 20px">
+            Faça o upload de uma imagem de mapa para gerar a prévia.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div id="print-container"></div>
+
+    <script>
+      const mapUpload = document.getElementById("map-upload");
+      const colsInput = document.getElementById("cols");
+      const rowsInput = document.getElementById("rows");
+      const overlapInput = document.getElementById("overlap");
+      const btnPrint = document.getElementById("btn-print-trigger");
+      const previewGrid = document.getElementById("preview-grid");
+      const printContainer = document.getElementById("print-container");
+
+      let uploadedImageSrc = "";
+      let originalWidth = 0;
+      let originalHeight = 0;
+
+      mapUpload.addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function (event) {
+          const img = new Image();
+          img.onload = function () {
+            uploadedImageSrc = event.target.result;
+            originalWidth = img.width;
+            originalHeight = img.height;
+            btnPrint.disabled = false;
+            renderMapPages();
+          };
+          img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      [colsInput, rowsInput, overlapInput].forEach((input) => {
+        input.addEventListener("input", () => {
+          if (uploadedImageSrc) renderMapPages();
+        });
+      });
+
+      btnPrint.addEventListener("click", () => {
+        window.print();
+      });
+
+      function renderMapPages() {
+        const cols = parseInt(colsInput.value) || 1;
+        const rows = parseInt(rowsInput.value) || 1;
+        const overlapMm = parseInt(overlapInput.value) || 0;
+
+        previewGrid.innerHTML = "";
+        printContainer.innerHTML = "";
+
+        previewGrid.style.gridTemplateColumns = `repeat(${cols}, 180px)`;
+
+        const a4WidthMm = 210;
+        const a4HeightMm = 297;
+
+        // Descontamos a sobreposição da área total para que a imagem se estenda perfeitamente
+        const totalWidthMm = cols * a4WidthMm - (cols - 1) * overlapMm;
+        const totalHeightMm = rows * a4HeightMm - (rows - 1) * overlapMm;
+
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const posX = c * (a4WidthMm - overlapMm);
+            const posY = r * (a4HeightMm - overlapMm);
+
+            // --- 1. GERAÇÃO DA PRÉVIA EM TELA ---
+            const previewPage = document.createElement("div");
+            previewPage.classList.add("preview-page");
+
+            const previewImg = document.createElement("img");
+            previewImg.src = uploadedImageSrc;
+            previewImg.classList.add("preview-page-img");
+
+            const previewScale = 180 / a4WidthMm; // Escala da tela
+
+            previewImg.style.width = `${totalWidthMm * previewScale}px`;
+            previewImg.style.height = `${totalHeightMm * previewScale}px`;
+            previewImg.style.left = `-${posX * previewScale}px`;
+            previewImg.style.top = `-${posY * previewScale}px`;
+
+            previewPage.appendChild(previewImg);
+
+            // Adiciona a máscara branca de sobreposição (Preview)
+            if (overlapMm > 0) {
+              createOverlapMasks(
+                previewPage,
+                r,
+                c,
+                rows,
+                cols,
+                overlapMm,
+                previewScale,
+                false,
+              );
+            }
+
+            previewGrid.appendChild(previewPage);
+
+            // --- 2. GERAÇÃO DA PÁGINA DE IMPRESSÃO (A4 REAL) ---
+            const printPage = document.createElement("div");
+            printPage.classList.add("print-page");
+
+            const printImg = document.createElement("img");
+            printImg.src = uploadedImageSrc;
+            printImg.classList.add("print-page-img");
+
+            printImg.style.width = `${totalWidthMm}mm`;
+            printImg.style.height = `${totalHeightMm}mm`;
+            printImg.style.left = `-${posX}mm`;
+            printImg.style.top = `-${posY}mm`;
+
+            printPage.appendChild(printImg);
+
+            // Adiciona a máscara branca de sobreposição (Impressão)
+            if (overlapMm > 0) {
+              createOverlapMasks(
+                printPage,
+                r,
+                c,
+                rows,
+                cols,
+                overlapMm,
+                1,
+                true,
+              );
+            }
+
+            printContainer.appendChild(printPage);
+          }
+        }
+      }
+
+      // Função utilitária para criar e posicionar as máscaras de colagem brancas nas bordas adequadas
+      function createOverlapMasks(
+        parentPage,
+        r,
+        c,
+        maxRows,
+        maxCols,
+        overlap,
+        scale,
+        isPrint,
+      ) {
+        const unit = isPrint ? "mm" : "px";
+        const className = isPrint ? "print-overlap-mask" : "overlap-mask";
+
+        const a4W = isPrint ? 210 : 180;
+        const a4H = isPrint ? 297 : (180 * 297) / 210;
+
+        // Se não for a última coluna, adicionamos uma margem branca na borda DIREITA desta página
+        // para que ela sirva de aba de colagem limpa (ou área para aplicar cola sem cobrir o desenho da outra folha)
+        if (c < maxCols - 1) {
+          const rightMask = document.createElement("div");
+          rightMask.classList.add(className);
+          rightMask.style.top = "0";
+          rightMask.style.right = "0";
+          rightMask.style.width = `${overlap * scale}${unit}`;
+          rightMask.style.height = "100%";
+          if (!isPrint) rightMask.innerText = "COLA";
+          parentPage.appendChild(rightMask);
+        }
+
+        // Se não for a última linha, adicionamos uma margem branca na borda INFERIOR desta página
+        if (r < maxRows - 1) {
+          const bottomMask = document.createElement("div");
+          bottomMask.classList.add(className);
+          bottomMask.style.bottom = "0";
+          bottomMask.style.left = "0";
+          bottomMask.style.width = "100%";
+          bottomMask.style.height = `${overlap * scale}${unit}`;
+          if (!isPrint) bottomMask.innerText = "COLA";
+          parentPage.appendChild(bottomMask);
+        }
+      }
+    </script>
+  </body>
+</html>
