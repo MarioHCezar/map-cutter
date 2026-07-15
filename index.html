@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Preparador de Impressão de Mapas de RPG</title>
+    <title>RPG Map Printer - Proporção Perfeita</title>
     <style>
       /* --- ESTILOS DA INTERFACE (TELA) --- */
       :root {
@@ -50,13 +50,14 @@
 
       .controls {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
         gap: 15px;
-        margin-bottom: 25px;
+        margin-bottom: 15px;
         background: rgba(0, 0, 0, 0.2);
-        padding: 15px;
+        padding: 20px;
         border-radius: 6px;
         border: 1px solid #444;
+        align-items: flex-end;
       }
 
       .control-group {
@@ -65,38 +66,61 @@
       }
 
       .control-group label {
-        font-size: 0.9rem;
-        margin-bottom: 5px;
+        font-size: 0.85rem;
+        margin-bottom: 8px;
         color: var(--accent);
         font-weight: bold;
+        height: 18px;
       }
 
       .control-group input[type="number"],
-      .control-group input[type="file"] {
-        padding: 8px;
+      .control-group input[type="file"],
+      .control-group select {
+        padding: 10px;
         border-radius: 4px;
         border: 1px solid #555;
         background-color: #333;
         color: white;
-        font-size: 1rem;
+        font-size: 0.95rem;
+        box-sizing: border-box;
+        height: 42px;
+      }
+
+      .control-group input[type="file"] {
+        padding: 7px;
       }
 
       .btn-print {
-        grid-column: 1 / -1;
         background-color: var(--primary);
         color: white;
         border: none;
-        padding: 12px;
-        font-size: 1.1rem;
+        height: 42px;
+        font-size: 1rem;
         font-weight: bold;
         border-radius: 4px;
         cursor: pointer;
         transition: background 0.2s;
-        margin-top: 10px;
+        box-sizing: border-box;
       }
 
-      .btn-print:hover {
+      .btn-print:hover:not(:disabled) {
         background-color: var(--primary-hover);
+      }
+
+      .btn-print:disabled {
+        background-color: #444;
+        color: #777;
+        cursor: not-allowed;
+      }
+
+      .grid-info {
+        background-color: rgba(212, 163, 115, 0.1);
+        border-left: 4px solid var(--accent);
+        padding: 12px;
+        margin-bottom: 25px;
+        border-radius: 0 4px 4px 0;
+        font-size: 0.95rem;
+        display: none;
       }
 
       /* --- CONTAINER DE PRÉVIA --- */
@@ -128,8 +152,17 @@
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
         position: relative;
         overflow: hidden;
-        aspect-ratio: 210 / 297;
+        box-sizing: border-box;
+      }
+
+      .preview-page.portrait {
         width: 180px;
+        aspect-ratio: 210 / 297;
+      }
+
+      .preview-page.landscape {
+        width: 254px;
+        aspect-ratio: 297 / 210;
       }
 
       .preview-page-img {
@@ -137,12 +170,11 @@
         transform-origin: top left;
       }
 
-      /* Margem de colagem (área branca com borda pontilhada) */
       .overlap-mask {
         position: absolute;
         pointer-events: none;
         box-sizing: border-box;
-        background-color: white; /* Branca para colar por cima ou cortar */
+        background-color: white;
         border: 1px dashed #777;
         display: flex;
         align-items: center;
@@ -151,14 +183,15 @@
         color: #555;
         font-family: sans-serif;
         overflow: hidden;
+        z-index: 10;
       }
 
-      /* --- ELEMENTOS DE IMPRESSÃO REAL (OCULTOS NA TELA) --- */
+      /* --- ELEMENTOS DE IMPRESSÃO REAL --- */
       #print-container {
         display: none;
       }
 
-      /* --- REGRAS DE IMPRESSÃO (CSS @media print) --- */
+      /* --- REGRAS DE IMPRESSÃO --- */
       @media print {
         body * {
           visibility: hidden;
@@ -179,12 +212,18 @@
         }
         .print-page {
           position: relative;
-          width: 210mm;
-          height: 297mm;
           page-break-after: always;
           overflow: hidden;
           box-sizing: border-box;
           background-color: white;
+        }
+        .print-page.portrait {
+          width: 210mm;
+          height: 297mm;
+        }
+        .print-page.landscape {
+          width: 297mm;
+          height: 210mm;
         }
         .print-page-img {
           position: absolute;
@@ -194,8 +233,8 @@
           position: absolute;
           pointer-events: none;
           box-sizing: border-box;
-          background-color: white; /* Deixa a área de colagem 100% branca na impressão */
-          border: 0.5mm dashed #999; /* Guia de corte discreta */
+          background-color: white;
+          border: 0.5mm dashed #999;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -203,10 +242,7 @@
           color: #666;
           font-family: sans-serif;
           overflow: hidden;
-        }
-        @page {
-          size: A4 portrait;
-          margin: 0;
+          z-index: 10;
         }
       }
     </style>
@@ -215,30 +251,40 @@
     <header>
       <h1>RPG Map Printer</h1>
       <p>
-        Divida seus mapas gigantes em folhas A4 com margem para colagem em
-        branco (fácil corte e sobreposição).
+        Divida seus mapas mantendo a proporção exata da imagem, sem esticar ou achatar.
       </p>
     </header>
 
     <div class="container">
       <div class="controls">
         <div class="control-group">
-          <label for="map-upload">1. Upload do Mapa (Imagem)</label>
+          <label for="map-upload">1. Upload do Mapa</label>
           <input type="file" id="map-upload" accept="image/*" />
         </div>
 
         <div class="control-group">
-          <label for="cols">2. Páginas na Horizontal (Colunas)</label>
-          <input type="number" id="cols" value="2" min="1" />
+          <label for="orientation">2. Orientação do Papel</label>
+          <select id="orientation">
+            <option value="portrait">Retrato (A4 em pé)</option>
+            <option value="landscape" selected>Paisagem (A4 deitado)</option>
+          </select>
         </div>
 
         <div class="control-group">
-          <label for="rows">3. Páginas na Vertical (Linhas)</label>
-          <input type="number" id="rows" value="2" min="1" />
+          <label for="size-mode">3. Ajustar tamanho por</label>
+          <select id="size-mode">
+            <option value="cols" selected>Largura (Colunas)</option>
+            <option value="rows">Altura (Linhas)</option>
+          </select>
         </div>
 
         <div class="control-group">
-          <label for="overlap">4. Margem de Sobreposição (mm)</label>
+          <label id="size-value-label" for="size-value">4. Qtd. de Páginas</label>
+          <input type="number" id="size-value" value="3" min="1" />
+        </div>
+
+        <div class="control-group">
+          <label for="overlap">5. Margem Adesiva (mm)</label>
           <input type="number" id="overlap" value="10" min="0" max="50" />
         </div>
 
@@ -246,6 +292,8 @@
           Imprimir Mapa
         </button>
       </div>
+
+      <div id="grid-info" class="grid-info"></div>
 
       <div class="preview-section">
         <h2>Prévia de Impressão</h2>
@@ -257,12 +305,11 @@
             margin-bottom: 15px;
           "
         >
-          As áreas com bordas tracejadas e fundo branco representam as margens
-          de colagem/corte.
+          As áreas pontilhadas indicam onde as folhas se sobrepõem para colagem.
         </p>
         <div id="preview-grid">
           <p style="color: #888; padding: 20px">
-            Faça o upload de uma imagem de mapa para gerar a prévia.
+            Faça o upload do seu mapa para visualizar a divisão proporcional das páginas.
           </p>
         </div>
       </div>
@@ -272,16 +319,22 @@
 
     <script>
       const mapUpload = document.getElementById("map-upload");
-      const colsInput = document.getElementById("cols");
-      const rowsInput = document.getElementById("rows");
+      const orientationInput = document.getElementById("orientation");
+      const sizeModeInput = document.getElementById("size-mode");
+      const sizeValueInput = document.getElementById("size-value");
+      const sizeValueLabel = document.getElementById("size-value-label");
       const overlapInput = document.getElementById("overlap");
       const btnPrint = document.getElementById("btn-print-trigger");
       const previewGrid = document.getElementById("preview-grid");
       const printContainer = document.getElementById("print-container");
+      const gridInfo = document.getElementById("grid-info");
 
       let uploadedImageSrc = "";
       let originalWidth = 0;
       let originalHeight = 0;
+
+      const stylePageElement = document.createElement("style");
+      document.head.appendChild(stylePageElement);
 
       mapUpload.addEventListener("change", function (e) {
         const file = e.target.files[0];
@@ -302,7 +355,16 @@
         reader.readAsDataURL(file);
       });
 
-      [colsInput, rowsInput, overlapInput].forEach((input) => {
+      sizeModeInput.addEventListener("change", () => {
+        if (sizeModeInput.value === "cols") {
+          sizeValueLabel.innerText = "4. Largura (Páginas)";
+        } else {
+          sizeValueLabel.innerText = "4. Altura (Páginas)";
+        }
+        if (uploadedImageSrc) renderMapPages();
+      });
+
+      [orientationInput, sizeValueInput, overlapInput].forEach((input) => {
         input.addEventListener("input", () => {
           if (uploadedImageSrc) renderMapPages();
         });
@@ -313,37 +375,70 @@
       });
 
       function renderMapPages() {
-        const cols = parseInt(colsInput.value) || 1;
-        const rows = parseInt(rowsInput.value) || 1;
+        const orientation = orientationInput.value;
+        const sizeMode = sizeModeInput.value;
+        const sizeValue = parseInt(sizeValueInput.value) || 1;
         const overlapMm = parseInt(overlapInput.value) || 0;
 
         previewGrid.innerHTML = "";
         printContainer.innerHTML = "";
 
-        previewGrid.style.gridTemplateColumns = `repeat(${cols}, 180px)`;
+        const isLandscape = orientation === "landscape";
+        const a4WidthMm = isLandscape ? 297 : 210;
+        const a4HeightMm = isLandscape ? 210 : 297;
+        const previewWidthPx = isLandscape ? 254 : 180;
 
-        const a4WidthMm = 210;
-        const a4HeightMm = 297;
+        stylePageElement.innerHTML = `@media print { @page { size: A4 ${orientation}; margin: 0; } }`;
 
-        // Descontamos a sobreposição da área total para que a imagem se estenda perfeitamente
-        const totalWidthMm = cols * a4WidthMm - (cols - 1) * overlapMm;
-        const totalHeightMm = rows * a4HeightMm - (rows - 1) * overlapMm;
+        const imgAspectRatio = originalWidth / originalHeight;
+
+        let cols = 1;
+        let rows = 1;
+        let totalWidthMm = 0;
+        let totalHeightMm = 0;
+
+        // MATEMÁTICA CORRIGIDA (ESTILO RASTERBATOR):
+        // 1. Definimos o tamanho físico em mm com base na quantidade de páginas desejadas em um dos eixos
+        // 2. Usamos a proporção exata da imagem para obter o tamanho do outro eixo
+        // 3. Calculamos exatamente quantas páginas são necessárias para cobrir o segundo eixo sem distorcer nada
+        if (sizeMode === "cols") {
+          cols = sizeValue;
+          totalWidthMm = cols * a4WidthMm - (cols - 1) * overlapMm;
+          totalHeightMm = totalWidthMm / imgAspectRatio;
+          rows = Math.ceil((totalHeightMm - overlapMm) / (a4HeightMm - overlapMm));
+          if (rows < 1) rows = 1;
+        } else {
+          rows = sizeValue;
+          totalHeightMm = rows * a4HeightMm - (rows - 1) * overlapMm;
+          totalWidthMm = totalHeightMm * imgAspectRatio;
+          cols = Math.ceil((totalWidthMm - overlapMm) / (a4WidthMm - overlapMm));
+          if (cols < 1) cols = 1;
+        }
+
+        // Mostra informações físicas reais calculadas do mapa
+        const finalWidthCm = (totalWidthMm / 10).toFixed(1);
+        const finalHeightCm = (totalHeightMm / 10).toFixed(1);
+        gridInfo.style.display = "block";
+        gridInfo.innerHTML = `<strong>Dimensões Finais do Mapa:</strong> ${finalWidthCm} x ${finalHeightCm} cm (Grid de <strong>${cols} colunas</strong> por <strong>${rows} linhas</strong> — Total: <strong>${cols * rows} folhas A4</strong>).`;
+
+        previewGrid.style.gridTemplateColumns = `repeat(${cols}, ${previewWidthPx}px)`;
 
         for (let r = 0; r < rows; r++) {
           for (let c = 0; c < cols; c++) {
             const posX = c * (a4WidthMm - overlapMm);
             const posY = r * (a4HeightMm - overlapMm);
 
-            // --- 1. GERAÇÃO DA PRÉVIA EM TELA ---
+            // --- 1. PRÉVIA EM TELA (CSS RELATIVO AO CONTAINER DO CARD) ---
             const previewPage = document.createElement("div");
-            previewPage.classList.add("preview-page");
+            previewPage.classList.add("preview-page", orientation);
 
             const previewImg = document.createElement("img");
             previewImg.src = uploadedImageSrc;
             previewImg.classList.add("preview-page-img");
 
-            const previewScale = 180 / a4WidthMm; // Escala da tela
+            const previewScale = previewWidthPx / a4WidthMm;
 
+            // Mantém a proporção perfeita definindo a largura e altura com base no MESMO fator de escala
             previewImg.style.width = `${totalWidthMm * previewScale}px`;
             previewImg.style.height = `${totalHeightMm * previewScale}px`;
             previewImg.style.left = `-${posX * previewScale}px`;
@@ -351,30 +446,21 @@
 
             previewPage.appendChild(previewImg);
 
-            // Adiciona a máscara branca de sobreposição (Preview)
             if (overlapMm > 0) {
-              createOverlapMasks(
-                previewPage,
-                r,
-                c,
-                rows,
-                cols,
-                overlapMm,
-                previewScale,
-                false,
-              );
+              createOverlapMasks(previewPage, r, c, rows, cols, overlapMm, previewScale, false);
             }
 
             previewGrid.appendChild(previewPage);
 
-            // --- 2. GERAÇÃO DA PÁGINA DE IMPRESSÃO (A4 REAL) ---
+            // --- 2. PÁGINA DE IMPRESSÃO (A4 REAL) ---
             const printPage = document.createElement("div");
-            printPage.classList.add("print-page");
+            printPage.classList.add("print-page", orientation);
 
             const printImg = document.createElement("img");
             printImg.src = uploadedImageSrc;
             printImg.classList.add("print-page-img");
 
+            // Define as dimensões reais de escala sem distorção
             printImg.style.width = `${totalWidthMm}mm`;
             printImg.style.height = `${totalHeightMm}mm`;
             printImg.style.left = `-${posX}mm`;
@@ -382,18 +468,8 @@
 
             printPage.appendChild(printImg);
 
-            // Adiciona a máscara branca de sobreposição (Impressão)
             if (overlapMm > 0) {
-              createOverlapMasks(
-                printPage,
-                r,
-                c,
-                rows,
-                cols,
-                overlapMm,
-                1,
-                true,
-              );
+              createOverlapMasks(printPage, r, c, rows, cols, overlapMm, 1, true);
             }
 
             printContainer.appendChild(printPage);
@@ -401,25 +477,11 @@
         }
       }
 
-      // Função utilitária para criar e posicionar as máscaras de colagem brancas nas bordas adequadas
-      function createOverlapMasks(
-        parentPage,
-        r,
-        c,
-        maxRows,
-        maxCols,
-        overlap,
-        scale,
-        isPrint,
-      ) {
+      function createOverlapMasks(parentPage, r, c, maxRows, maxCols, overlap, scale, isPrint) {
         const unit = isPrint ? "mm" : "px";
         const className = isPrint ? "print-overlap-mask" : "overlap-mask";
 
-        const a4W = isPrint ? 210 : 180;
-        const a4H = isPrint ? 297 : (180 * 297) / 210;
-
-        // Se não for a última coluna, adicionamos uma margem branca na borda DIREITA desta página
-        // para que ela sirva de aba de colagem limpa (ou área para aplicar cola sem cobrir o desenho da outra folha)
+        // Margem de colagem à direita (se não for a última coluna do grid)
         if (c < maxCols - 1) {
           const rightMask = document.createElement("div");
           rightMask.classList.add(className);
@@ -431,7 +493,7 @@
           parentPage.appendChild(rightMask);
         }
 
-        // Se não for a última linha, adicionamos uma margem branca na borda INFERIOR desta página
+        // Margem de colagem inferior (se não for a última linha do grid)
         if (r < maxRows - 1) {
           const bottomMask = document.createElement("div");
           bottomMask.classList.add(className);
