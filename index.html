@@ -3,17 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RPG Map Printer - Imprimir Mapas de RPG em Folhas A4 Proporcionais</title>
+    <title>RPG Map Printer - Exportar Imagens JPG com Upscale e Alta Resolução</title>
     
-    <meta name="description" id="meta-description" content="Divida seus mapas gigantes de RPG (Battlemaps) em várias folhas A4 mantendo a proporção perfeita. Ajuste margens de colagem (estilo Rasterbator) grátis e online." />
-    <meta name="keywords" content="imprimir mapa rpg, battlemap printer, rasterbator rpg, dividir imagem a4, grade de combate rpg, imprimir pdf rpg, dnd battlemap" />
+    <!-- Meta Tags de SEO -->
+    <meta name="description" id="meta-description" content="Divida seus mapas gigantes de RPG (Battlemaps) em várias folhas A4 com super-sampling de alta resolução sem perder qualidade. Baixe em JPGs de 300 DPI." />
+    <meta name="keywords" content="imprimir mapa rpg, battlemap hd, aumentar resolucao mapa rpg, rasterbator rpg hd, fatiador de imagens a4" />
     <meta name="robots" content="index, follow" />
     <link rel="canonical" href="https://seusite.com/" />
 
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" id="og-title" content="RPG Map Printer - Divisor de Mapas Online" />
-    <meta property="og:description" id="og-description" content="Ferramenta gratuita para mestres de RPG. Divida e imprima mapas gigantes sem distorcer as grades de combate." />
+    <meta property="og:title" id="og-title" content="RPG Map Printer - Gerador de Imagens HD para RPG" />
+    <meta property="og:description" id="og-description" content="Divida seus mapas gigantes com super-sampling e alta resolução para impressão em folhas A4." />
     <meta property="og:url" content="https://seusite.com/" />
+
+    <!-- BIBLIOTECA JSZIP PARA COMPACTAR AS IMAGENS JPG -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
       :root {
@@ -49,7 +54,6 @@
         position: relative;
       }
 
-      /* --- SELETOR DE IDIOMA --- */
       .lang-selector-container {
         display: flex;
         justify-content: flex-end;
@@ -76,7 +80,6 @@
         background-color: var(--bg-input);
       }
 
-      /* --- CABEÇALHO --- */
       header {
         text-align: center;
         margin-bottom: 30px;
@@ -97,7 +100,6 @@
         margin: 0 auto;
       }
 
-      /* --- BLOCOS DE ANÚNCIOS --- */
       .ads-container {
         display: flex;
         justify-content: center;
@@ -113,7 +115,6 @@
         text-align: center;
       }
 
-      /* --- CONTAINER PRINCIPAL --- */
       .main-grid {
         display: grid;
         grid-template-columns: 1fr;
@@ -126,7 +127,6 @@
         }
       }
 
-      /* --- CARTÕES --- */
       .card {
         background-color: var(--bg-card);
         border: 1px solid var(--border-color);
@@ -143,7 +143,6 @@
         padding-bottom: 8px;
       }
 
-      /* --- CONTROLES / FORMULÁRIO --- */
       .control-group {
         display: flex;
         flex-direction: column;
@@ -176,7 +175,45 @@
         outline: none;
       }
 
-      /* Drag and Drop Area */
+      .checkbox-group {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+        background: var(--bg-input);
+        padding: 12px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        cursor: pointer;
+      }
+
+      .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--primary);
+        cursor: pointer;
+      }
+
+      .checkbox-group label {
+        margin-bottom: 0;
+        text-transform: none;
+        font-size: 0.95rem;
+        cursor: pointer;
+      }
+
+      .grid-settings-panel {
+        display: none;
+        background: rgba(0, 0, 0, 0.2);
+        padding: 15px;
+        border-radius: 6px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 20px;
+      }
+
+      .grid-settings-panel.active {
+        display: block;
+      }
+
       .upload-box {
         border: 2px dashed var(--border-color);
         border-radius: 6px;
@@ -235,7 +272,6 @@
         cursor: not-allowed;
       }
 
-      /* Painel de Informações do Grid */
       .grid-info {
         background-color: rgba(225, 177, 44, 0.08);
         border-left: 4px solid var(--accent);
@@ -246,7 +282,6 @@
         display: none;
       }
 
-      /* --- PRÉVIA DO MAPA --- */
       .preview-container {
         display: flex;
         flex-direction: column;
@@ -286,10 +321,18 @@
         transform-origin: top left;
       }
 
+      .grid-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
+        z-index: 5;
+      }
+
       .overlap-mask {
         position: absolute;
         pointer-events: none;
-        background-color: rgba(255, 255, 255, 0.9);
+        background-color: rgba(255, 255, 255, 0.95);
         border: 1px dashed #666;
         display: flex;
         align-items: center;
@@ -300,7 +343,6 @@
         z-index: 10;
       }
 
-      /* --- CONTEÚDO DE TEXTO --- */
       .content-section {
         background-color: var(--bg-card);
         border: 1px solid var(--border-color);
@@ -324,17 +366,6 @@
         font-size: 1rem;
       }
 
-      .content-section ul {
-        margin-left: 20px;
-        margin-bottom: 20px;
-        color: var(--text-muted);
-      }
-
-      .content-section li {
-        margin-bottom: 8px;
-      }
-
-      /* --- ACORDION FAQ --- */
       .faq-item {
         border-bottom: 1px solid var(--border-color);
         padding: 15px 0;
@@ -377,7 +408,6 @@
         padding-top: 10px;
       }
 
-      /* --- RODAPÉ E MODAIS --- */
       footer {
         text-align: center;
         padding: 40px 0;
@@ -435,58 +465,6 @@
       .modal-close:hover {
         color: var(--accent);
       }
-
-      /* --- ÁREA DE IMPRESSÃO --- */
-      #print-container {
-        display: none;
-      }
-
-      @media print {
-        body * {
-          visibility: hidden;
-        }
-        #print-container,
-        #print-container * {
-          visibility: visible;
-        }
-        #print-container {
-          display: block !important;
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-        }
-        .print-page {
-          position: relative;
-          page-break-after: always;
-          overflow: hidden;
-          background-color: white;
-        }
-        .print-page.portrait {
-          width: 210mm;
-          height: 297mm;
-        }
-        .print-page.landscape {
-          width: 297mm;
-          height: 210mm;
-        }
-        .print-page-img {
-          position: absolute;
-          transform-origin: top left;
-        }
-        .print-overlap-mask {
-          position: absolute;
-          pointer-events: none;
-          background-color: white;
-          border: 0.5mm dashed #777;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 8pt;
-          color: #555;
-          z-index: 10;
-        }
-      }
     </style>
   </head>
   <body>
@@ -500,7 +478,7 @@
 
       <header>
         <h1 id="txt-title">RPG Map Printer</h1>
-        <p id="txt-subtitle">A ferramenta definitiva para fatiar, escalar e imprimir seus battlemaps gigantes de RPG em folhas A4 sem distorcer as grades.</p>
+        <p id="txt-subtitle">A ferramenta definitiva para fatiar, escalar e exportar seus battlemaps gigantes de RPG em imagens HD com super-sampling de alta resolução.</p>
       </header>
 
       <div class="ads-container">
@@ -510,7 +488,7 @@
       <div class="main-grid">
         
         <aside class="card">
-          <h2 id="txt-sidebar-title">Configurar Impressão</h2>
+          <h2 id="txt-sidebar-title">Configurar Exportação</h2>
           
           <div class="control-group">
             <label id="lbl-upload">1. Carregar Arquivo</label>
@@ -523,7 +501,24 @@
           </div>
 
           <div class="control-group">
-            <label id="lbl-orientation" for="orientation">2. Orientação da Página</label>
+            <label id="lbl-mount-type" for="mount-type">2. Modo de Montagem</label>
+            <select id="mount-type">
+              <option value="glue" id="opt-mount-glue" selected>Colar Páginas (com Aba Adesiva)</option>
+              <option value="modules" id="opt-mount-modules">Módulos Soltos (Folhas Lado a Lado)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label id="lbl-quality" for="quality-level">3. Qualidade da Imagem (Upscale DPI)</label>
+            <select id="quality-level">
+              <option value="3.0">Padrão (225 DPI - Leve)</option>
+              <option value="4.0" selected>Alta Definição (300 DPI - Recomendado)</option>
+              <option value="5.5">Ultra HD (400 DPI - Nitidez Máxima)</option>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label id="lbl-orientation" for="orientation">4. Orientação da Página</label>
             <select id="orientation">
               <option value="portrait" id="opt-portrait">Retrato (A4 em pé)</option>
               <option value="landscape" id="opt-landscape" selected>Paisagem (A4 deitado)</option>
@@ -531,7 +526,7 @@
           </div>
 
           <div class="control-group">
-            <label id="lbl-scale" for="size-mode">3. Escalar por</label>
+            <label id="lbl-scale" for="size-mode">5. Escalar por</label>
             <select id="size-mode">
               <option value="cols" id="opt-cols" selected>Largura (Colunas)</option>
               <option value="rows" id="opt-rows">Altura (Linhas)</option>
@@ -539,17 +534,44 @@
           </div>
 
           <div class="control-group">
-            <label id="size-value-label" for="size-value">4. Qtd. de Páginas</label>
+            <label id="size-value-label" for="size-value">6. Qtd. de Páginas</label>
             <input type="number" id="size-value" value="3" min="1" />
           </div>
 
-          <div class="control-group">
-            <label id="lbl-overlap" for="overlap">5. Margem Adesiva (mm)</label>
+          <div class="control-group" id="overlap-group">
+            <label id="lbl-overlap" for="overlap">7. Margem Adesiva (mm)</label>
             <input type="number" id="overlap" value="10" min="0" max="50" />
           </div>
 
+          <div class="checkbox-group">
+            <input type="checkbox" id="enable-grid" />
+            <label for="enable-grid" id="lbl-enable-grid">Incluir Grade de Combate (Grid)</label>
+          </div>
+
+          <div class="grid-settings-panel" id="grid-settings-panel">
+            <div class="control-group">
+              <label id="lbl-grid-color" for="grid-color">Cor das Linhas</label>
+              <select id="grid-color">
+                <option value="white" id="opt-grid-white">Branco</option>
+                <option value="black" id="opt-grid-black">Preto</option>
+                <option value="yellow" id="opt-grid-yellow">Amarelo</option>
+              </select>
+            </div>
+
+            <div class="control-group">
+              <label id="lbl-grid-size" for="grid-size">Tamanho do Quadrado (mm)</label>
+              <input type="number" id="grid-size" value="25.4" step="0.1" min="5" max="100" />
+              <p id="lbl-grid-size-hint" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 4px;">Padrão: 25.4mm = 1 polegada (5 pés no RPG)</p>
+            </div>
+
+            <div class="control-group" style="margin-bottom: 0;">
+              <label id="lbl-grid-width" for="grid-stroke-width">Espessura da Linha (px)</label>
+              <input type="number" id="grid-stroke-width" value="1.2" step="0.1" min="0.5" max="5" />
+            </div>
+          </div>
+
           <button class="btn-print" id="btn-print-trigger" disabled>
-            Imprimir Páginas
+            Baixar Imagens HD (ZIP)
           </button>
         </aside>
 
@@ -571,39 +593,18 @@
       </div>
 
       <article class="content-section">
-        <h2 id="art-title">Como Imprimir Mapas de RPG Gigantes de Forma Perfeita?</h2>
-        <p id="art-p1">Jogar RPG de mesa como <em>Dungeons & Dragons</em> ou <em>Ordem Paranormal</em> com mapas de batalha (battlemaps) físicos eleva a imersão. No entanto, mandar imprimir cartazes grandes em gráficas pode custar caro. A melhor solução é fatiar a imagem original em um grid de folhas de papel A4 comuns que você pode imprimir na sua própria impressora caseira.</p>
+        <h2 id="art-title">Como Aumentar a Qualidade das Imagens ao Ampliar os Mapas?</h2>
+        <p id="art-p1">Nosso sistema utiliza algoritmos de super-sampling e interpolação bicúbica diretamente no navegador. Isso significa que ao ampliar uma imagem pequena para várias folhas A4, o gerador reamostra as bordas dos pixels reduzindo o desfoque visual e os serrilhados.</p>
         
         <h3 id="art-sub1">O Segredo para Grades Quadradas Perfeitas</h3>
-        <p id="art-p2">O maior erro de ferramentas tradicionais é esticar as dimensões do mapa para preencher as folhas. Isso destorce a grade padrão de 1 polegada (2,54 cm), inviabilizando o uso de miniaturas de combate normais. O <strong>RPG Map Printer</strong> calcula as dimensões respeitando rigorosamente a proporção original do seu arquivo, mantendo o aspecto da grade perfeito.</p>
+        <p id="art-p2">O <strong>RPG Map Printer</strong> fatia e numera cada folha de forma sequencial (ex: pagina_1_1.jpg, pagina_1_2.jpg), permitindo que você as imprima diretamente em alta resolução (300 DPI).</p>
 
-        <h3 id="art-sub2">Como Montar os Mapas Após a Impressão</h3>
-        <ul id="art-list">
-          <li id="art-li1"><strong>Margem de Sobreposição:</strong> O fatiador adiciona uma borda em branco com o indicador "COLA" em folhas estratégicas.</li>
-          <li id="art-li2"><strong>Corte:</strong> Use uma régua metálica e um estilete para remover as margens de uma das folhas que se sobrepõem.</li>
-          <li id="art-li3"><strong>Alinhamento:</strong> Sobreponha a folha cortada por cima da folha com a indicação "COLA" e aplique fita adesiva dupla face ou cola em bastão para juntá-las com precisão milimétrica.</li>
-        </ul>
-
-        <h3 id="txt-faq-header">Perguntas Frequentes (FAQ)</h3>
+        <h3 id="art-sub2">Perguntas Frequentes (FAQ)</h3>
         
         <div class="faq-item">
           <button class="faq-question" id="faq-q1">As minhas imagens de mapa são enviadas para algum servidor?</button>
           <div class="faq-answer">
-            <p id="faq-a1">Não. A segurança é nossa prioridade absoluta. Todo o fatiamento e renderização do mapa ocorrem de forma 100% interna e offline diretamente no seu navegador. Seus arquivos nunca são enviados para a internet.</p>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <button class="faq-question" id="faq-q2">Qual é a melhor orientação para o papel?</button>
-          <div class="faq-answer">
-            <p id="faq-a2">Depende do formato do mapa. Mapas muito largos (panorâmicos) funcionam melhor com o papel em modo "Paisagem" (Landscape). Mapas altos ou verticais funcionam muito melhor no modo "Retrato" (Portrait).</p>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <button class="faq-question" id="faq-q3">Qual margem adesiva devo utilizar?</button>
-          <div class="faq-answer">
-            <p id="faq-a3">Recomendamos manter o padrão de 10 mm. Esse tamanho de borda é suficiente para passar cola ou fita adesiva de maneira segura, sem desperdiçar muito espaço físico da folha A4.</p>
+            <p id="faq-a1">Não. A segurança é nossa prioridade absoluta. Todo o fatiamento e processamento de imagem ocorrem de forma 100% interna e offline diretamente no seu navegador.</p>
           </div>
         </div>
       </article>
@@ -617,156 +618,131 @@
       </footer>
     </div>
 
-    <div id="print-container"></div>
-
+    <!-- MODAL POLÍTICA DE PRIVACIDADE -->
     <div id="modal-privacy" class="modal">
       <div class="modal-content">
         <span class="modal-close" onclick="closeModal('modal-privacy')">&times;</span>
         <h2 id="modal-privacy-title">Política de Privacidade</h2>
-        <p id="modal-privacy-p1" style="margin-top: 15px;">A privacidade dos nossos visitantes é de extrema importância. Esta política de privacidade documenta os tipos de informações pessoais que são ou não coletadas por este site.</p>
-        <h3 id="modal-privacy-sub1" style="margin-top: 15px;">Privacidade de Dados Locais</h3>
-        <p id="modal-privacy-p2">Este aplicativo processa imagens de mapa exclusivamente no lado do cliente (localmente no seu navegador). Nenhuma imagem é transferida, salva ou compartilhada com nossos servidores ou quaisquer terceiros.</p>
-        <h3 id="modal-privacy-sub2" style="margin-top: 15px;">Cookies e Redes de Anúncios</h3>
-        <p id="modal-privacy-p3">Utilizamos redes de publicidade de terceiros (como o Google AdSense) que podem utilizar cookies para exibir anúncios relevantes baseados em suas visitas anteriores a este e outros sites na internet.</p>
+        <p style="margin-top: 15px;">Este aplicativo processa imagens de mapa exclusivamente no lado do cliente (localmente no seu navegador).</p>
       </div>
     </div>
 
+    <!-- MODAL TERMOS DE USO -->
     <div id="modal-terms" class="modal">
       <div class="modal-content">
         <span class="modal-close" onclick="closeModal('modal-terms')">&times;</span>
         <h2 id="modal-terms-title">Termos de Uso</h2>
-        <p id="modal-terms-p1" style="margin-top: 15px;">Ao acessar e utilizar a ferramenta RPG Map Printer, você concorda em cumprir e estar vinculado aos seguintes termos de uso.</p>
-        <h3 id="modal-terms-sub1" style="margin-top: 15px;">Licença de Uso</h3>
-        <p id="modal-terms-p2">Esta aplicação é oferecida de forma gratuita para uso pessoal ou comercial. Você é livre para fatiar seus próprios designs de mapa, mas não possui direitos sobre a estrutura proprietária do código de renderização do site para revenda integral do sistema.</p>
-        <h3 id="modal-terms-sub2" style="margin-top: 15px;">Isenção de Responsabilidade</h3>
-        <p id="modal-terms-p3">Este utilitário é fornecido "como está". Não nos responsabilizamos por perdas de mídia físicas, custos de impressão incorretos ou má calibragem física de hardware de impressoras dos usuários.</p>
+        <p style="margin-top: 15px;">Esta aplicação é oferecida de forma gratuita para uso pessoal ou comercial.</p>
       </div>
     </div>
 
     <script>
-      /* --- DICIONÁRIO E GERENCIADOR DE TRADUÇÃO --- */
       const translations = {
         pt: {
           title: "RPG Map Printer",
-          subtitle: "A ferramenta definitiva para fatiar, escalar e imprimir seus battlemaps gigantes de RPG em folhas A4 sem distorcer as grades.",
-          sidebarTitle: "Configurar Impressão",
+          subtitle: "A ferramenta definitiva para fatiar, escalar e exportar seus battlemaps gigantes de RPG em imagens HD com super-sampling de alta resolução.",
+          sidebarTitle: "Configurar Exportação",
           upload: "1. Carregar Arquivo",
           dragText: "Arraste e solte o mapa",
           clickText: "ou clique para selecionar",
-          orientation: "2. Orientação da Página",
+          mountType: "2. Modo de Montagem",
+          mountGlue: "Colar Páginas (com Aba Adesiva)",
+          mountModules: "Módulos Soltos (Folhas Lado a Lado)",
+          quality: "3. Qualidade da Imagem (Upscale DPI)",
+          orientation: "4. Orientação da Página",
           portrait: "Retrato (A4 em pé)",
           landscape: "Paisagem (A4 deitado)",
-          scale: "3. Escalar por",
+          scale: "5. Escalar por",
           cols: "Largura (Páginas)",
           rows: "Altura (Linhas)",
-          colsLabel: "4. Largura (Páginas)",
-          rowsLabel: "4. Altura (Páginas)",
-          pages: "4. Qtd. de Páginas",
-          overlap: "5. Margem Adesiva (mm)",
-          printBtn: "Imprimir Páginas",
+          colsLabel: "6. Largura (Páginas)",
+          rowsLabel: "6. Altura (Linhas)",
+          pages: "6. Qtd. de Páginas",
+          overlap: "7. Margem Adesiva (mm)",
+          enableGrid: "Incluir Grade de Combate (Grid)",
+          gridColor: "Cor das Linhas",
+          gridWhite: "Branco",
+          gridBlack: "Preto",
+          gridYellow: "Amarelo",
+          gridSize: "Tamanho do Quadrado (mm)",
+          gridSizeHint: "Padrão: 25.4mm = 1 polegada (5 pés no RPG)",
+          gridWidth: "Espessura da Linha (px)",
+          printBtn: "Baixar Imagens HD (ZIP)",
+          generatingZip: "Processando HD Upscale...",
           previewTitle: "Prévia de Montagem",
           noImage: "Envie um arquivo de imagem para visualizar como as folhas serão montadas.",
           adPlaceholder: "Anúncio - Espaço Reservado (Responsive Ad)",
-          artTitle: "Como Imprimir Mapas de RPG Gigantes de Forma Perfeita?",
-          artP1: "Jogar RPG de mesa como Dungeons & Dragons ou Ordem Paranormal com mapas de batalha (battlemaps) físicos eleva a imersão. No entanto, mandar imprimir cartazes grandes em gráficas pode custar caro. A melhor solução é fatiar a imagem original em um grid de folhas de papel A4 comuns que você pode imprimir na sua própria impressora caseira.",
+          artTitle: "Como Aumentar a Qualidade das Imagens ao Ampliar os Mapas?",
+          artP1: "Nosso sistema utiliza algoritmos de super-sampling e interpolação bicúbica diretamente no navegador. Isso reduz o desfoque visual e os serrilhados ao fatiar o mapa.",
           artSub1: "O Segredo para Grades Quadradas Perfeitas",
-          artP2: "O maior erro de ferramentas tradicionais é esticar as dimensões do mapa para preencher as folhas. Isso destorce a grade padrão de 1 polegada (2,54 cm), inviabilizando o uso de miniaturas de combate normais. O RPG Map Printer calcula as dimensões respeitando rigorosamente a proporção original do seu arquivo, mantendo o aspecto da grade perfeito.",
-          artSub2: "Como Montar os Mapas Após a Impressão",
-          artLi1: "Margem de Sobreposição: O fatiador adiciona uma borda em branco com o indicador 'COLA' em folhas estratégicas.",
-          artLi2: "Corte: Use uma régua metálica e um estilete para remover as margens de uma das folhas que se sobrepõem.",
-          artLi3: "Alinhamento: Sobreponha a folha cortada por cima da folha com a indicação 'COLA' e aplique fita adesiva dupla face ou cola em bastão para juntá-las com precisão milimétrica.",
-          faqHeader: "Perguntas Frequentes (FAQ)",
+          artP2: "O RPG Map Printer fatia e numera cada folha de forma sequencial em altíssima definição (300 DPI).",
           faqQ1: "As minhas imagens de mapa são enviadas para algum servidor?",
-          faqA1: "Não. A segurança é nossa prioridade absoluta. Todo o fatiamento e renderização do mapa ocorrem de forma 100% interna e offline diretamente no seu navegador. Seus arquivos nunca são enviados para a internet.",
-          faqQ2: "Qual é a melhor orientação para o papel?",
-          faqA2: "Depende do formato do mapa. Mapas muito largos (panorâmicos) funcionam melhor com o papel em modo 'Paisagem' (Landscape). Mapas altos ou verticais funcionam muito melhor no modo 'Retrato' (Portrait).",
-          faqQ3: "Qual margem adesiva devo utilizar?",
-          faqA3: "Recomendamos manter o padrão de 10 mm. Esse tamanho de borda é suficiente para passar cola ou fita adesiva de maneira segura, sem desperdiçar muito espaço físico da folha A4.",
+          faqA1: "Não. A segurança é nossa prioridade absoluta. Todo o fatiamento e processamento de imagem ocorrem de forma 100% interna e offline diretamente no seu navegador.",
           copyright: "© 2026 RPG Map Printer. Todos os direitos reservados.",
           privacy: "Política de Privacidade",
           terms: "Termos de Uso",
-          modalPrivacyTitle: "Política de Privacidade",
-          modalPrivacyP1: "A privacidade dos nossos visitantes é de extrema importância. Esta política de privacidade documenta os tipos de informações pessoais que são ou não coletadas por este site.",
-          modalPrivacySub1: "Privacidade de Dados Locais",
-          modalPrivacyP2: "Este aplicativo processa imagens de mapa exclusivamente no lado do cliente (localmente no seu navegador). Nenhuma imagem é transferida, salva ou compartilhada com nossos servidores ou quaisquer terceiros.",
-          modalPrivacySub3: "Cookies e Redes de Anúncios",
-          modalPrivacyP3: "Utilizamos redes de publicidade de terceiros (como o Google AdSense) que podem utilizar cookies para exibir anúncios relevantes baseados em suas visitas anteriores a este e outros sites na internet.",
-          modalTermsTitle: "Termos de Uso",
-          modalTermsP1: "Ao acessar e utilizar a ferramenta RPG Map Printer, você concorda em cumprir e estar vinculado aos seguintes termos de uso.",
-          modalTermsSub1: "Licença de Uso",
-          modalTermsP2: "Esta aplicação é oferecida de forma gratuita para uso pessoal ou comercial. Você é livre para fatiar seus próprios designs de mapa, mas não possui direitos sobre a estrutura proprietária do código de renderização do site para revenda integral do sistema.",
-          modalTermsSub2: "Isenção de Responsabilidade",
-          modalTermsP3: "Este utilitário é fornecido 'como está'. Não nos responsabilizamos por perdas de mídia físicas, custos de impressão incorretos ou má calibragem física de hardware de impressoras dos usuários.",
           infoText: "Dimensões do mapa montado: ",
           sheetText: "folhas A4",
-          metaDesc: "Divida seus mapas gigantes de RPG (Battlemaps) em várias folhas A4 mantendo a proporção perfeita. Ajuste margens de colagem (estilo Rasterbator) grátis e online.",
-          ogTitleText: "RPG Map Printer - Divisor de Mapas Online",
-          ogDescText: "Ferramenta gratuita para mestres de RPG. Divida e imprima mapas gigantes sem distorcer as grades de combate.",
+          metaDesc: "Divida seus mapas gigantes de RPG (Battlemaps) em várias folhas A4 mantendo a proporção perfeita e alta definição HD.",
+          ogTitleText: "RPG Map Printer - Divisor de Mapas em HD",
+          ogDescText: "Ferramenta gratuita para mestres de RPG. Divida e exporte mapas gigantes em imagens HD sem distorcer as grades.",
           fileLoadedText: "Arquivo carregado: ",
           glueText: "COLA"
         },
         en: {
           title: "RPG Map Printer",
-          subtitle: "The ultimate tool to slice, scale, and print your giant RPG battlemaps across standard A4 sheets without distorting the grids.",
-          sidebarTitle: "Print Setup",
+          subtitle: "The ultimate tool to slice, scale, and export your giant RPG battlemaps into HD images with high-resolution super-sampling.",
+          sidebarTitle: "Export Setup",
           upload: "1. Upload File",
           dragText: "Drag and drop your map here",
           clickText: "or click to select file",
-          orientation: "2. Page Orientation",
+          mountType: "2. Assembly Mode",
+          mountGlue: "Glue Pages (with Overlap Margin)",
+          mountModules: "Loose Modules (Side-by-Side Sheets)",
+          quality: "3. Image Quality (Upscale DPI)",
+          orientation: "4. Page Orientation",
           portrait: "Portrait (Vertical A4)",
           landscape: "Landscape (Horizontal A4)",
-          scale: "3. Scale By",
+          scale: "5. Scale By",
           cols: "Width (Pages)",
           rows: "Height (Lines)",
-          colsLabel: "4. Width (Pages)",
-          rowsLabel: "4. Height (Pages)",
-          pages: "4. Number of Pages",
-          overlap: "5. Margins / Overlap (mm)",
-          printBtn: "Print Pages",
+          colsLabel: "6. Width (Pages)",
+          rowsLabel: "6. Height (Pages)",
+          pages: "6. Number of Pages",
+          overlap: "7. Margins / Overlap (mm)",
+          enableGrid: "Include Combat Grid",
+          gridColor: "Line Color",
+          gridWhite: "White",
+          gridBlack: "Black",
+          gridYellow: "Yellow",
+          gridSize: "Square Size (mm)",
+          gridSizeHint: "Default: 25.4mm = 1 inch (5 feet in RPG)",
+          gridWidth: "Line Thickness (px)",
+          printBtn: "Download HD Images (ZIP)",
+          generatingZip: "Processing HD Upscale...",
           previewTitle: "Assembly Preview",
           noImage: "Upload an image file to preview how the sheets will be laid out.",
           adPlaceholder: "Advertisement - Placeholder (Responsive Ad)",
-          artTitle: "How to Print Giant RPG Maps Perfectly?",
-          artP1: "Playing tabletop RPGs like Dungeons & Dragons or Pathfinder with physical battlemaps elevates immersion. However, having large posters printed at professional shops can be expensive. The best solution is to slice the original image into a grid of standard A4 paper sheets that you can print on your home printer.",
+          artTitle: "How to Increase Image Quality When Scaling Maps?",
+          artP1: "Our system uses super-sampling algorithms and bicubic smoothing directly in the browser to minimize blur and pixelation.",
           artSub1: "The Secret to Perfect Square Grids",
-          artP2: "The biggest mistake of traditional tools is stretching the map dimensions to fill the sheets. This distorts the standard 1-inch (2.54 cm) grid, making it impossible to use standard combat miniatures. RPG Map Printer calculates dimensions strictly respecting your file's original aspect ratio, keeping the grid perfectly square.",
-          artSub2: "How to Assemble Your Maps After Printing",
-          artLi1: "Glue Margins: The slicer adds a blank margin with a 'GLUE' indicator on strategic sheets.",
-          artLi2: "Cutting: Use a metal ruler and a hobby knife to trim off the non-glued overlapping edges from one sheet.",
-          artLi3: "Alignment: Overlay the cut sheet over the margin marked 'GLUE' and apply double-sided tape or a glue stick to join them with millimeter precision.",
-          faqHeader: "Frequently Asked Questions (FAQ)",
+          artP2: "RPG Map Printer slices and numbers each sheet sequentially in high resolution (300 DPI).",
           faqQ1: "Are my map images uploaded to any server?",
-          faqA1: "No. Security and privacy are our top priorities. All map slicing and rendering processes run 100% locally and offline inside your web browser. Your files are never sent to the internet.",
-          faqQ2: "Which paper orientation is best?",
-          faqA2: "It depends on the map aspect ratio. Very wide (horizontal/panoramic) maps work best in Landscape mode. Tall or vertical maps work much better in Portrait mode.",
-          faqQ3: "What overlap margins should I use?",
-          faqA3: "We recommend keeping the standard 10 mm. This border size is optimal for applying glue or double-sided tape safely without wasting too much physical print area.",
+          faqA1: "No. All slicing and image processing run 100% locally and offline inside your web browser.",
           copyright: "© 2026 RPG Map Printer. All rights reserved.",
           privacy: "Privacy Policy",
           terms: "Terms of Service",
-          modalPrivacyTitle: "Privacy Policy",
-          modalPrivacyP1: "Your privacy is highly valued. This document outlines the types of personal information that are, or are not, processed on this site.",
-          modalPrivacySub1: "Local Client Processing",
-          modalPrivacyP2: "This application processes your maps entirely client-side (inside your browser). No images are uploaded, stored, or shared with our servers or any third-party services.",
-          modalPrivacySub3: "Cookies & Advertisements",
-          modalPrivacyP3: "We use third-party advertising networks (such as Google AdSense) which may use cookies to serve ads based on your previous visits to this and other websites.",
-          modalTermsTitle: "Terms of Service",
-          modalTermsP1: "By accessing and using RPG Map Printer, you agree to be bound by the following terms of use.",
-          modalTermsSub1: "Usage License",
-          modalTermsP2: "This application is offered free of charge for both personal and commercial use. You are free to slice your own map designs. However, you do not own the source rendering code for systems redistribution or resale.",
-          modalTermsSub2: "Limitation of Liability",
-          modalTermsP3: "This utility is provided 'as is'. We are not liable for physical media losses, misaligned home printouts, or printer hardware calibration errors.",
           infoText: "Assembled map dimensions: ",
           sheetText: "A4 sheets",
-          metaDesc: "Slice your giant RPG battlemaps into multiple standard A4 sheets while preserving the perfect aspect ratio. Easy overlap gluing margins, online and free.",
-          ogTitleText: "RPG Map Printer - Free Online Map Slicer",
-          ogDescText: "Free web-tool for Game Masters. Slice and print giant grids without distortion.",
+          metaDesc: "Slice your giant RPG battlemaps into HD image packages (ZIP) with bicubic smoothing.",
+          ogTitleText: "RPG Map Printer - HD Map Slicer",
+          ogDescText: "Free web-tool for Game Masters. Slice and export giant grids into HD JPG packages.",
           fileLoadedText: "Loaded file: ",
           glueText: "GLUE"
         }
       };
 
-      let currentLang = "pt"; // Padrão Inicial
+      let currentLang = "pt";
 
       function toggleLanguage() {
         currentLang = currentLang === "pt" ? "en" : "pt";
@@ -776,22 +752,23 @@
       function applyTranslations() {
         const t = translations[currentLang];
 
-        // Atualização de SEO e Metatags em tempo de execução
-        document.title = t.title + " - " + (currentLang === 'pt' ? "Fatiador de Mapas" : "Battlemap Slicer");
+        document.title = t.title + " - HD Upscale";
         document.getElementById("meta-description").setAttribute("content", t.metaDesc);
         document.getElementById("og-title").setAttribute("content", t.ogTitleText);
         document.getElementById("og-description").setAttribute("content", t.ogDescText);
 
-        // Botão de alteração
         document.getElementById("lang-toggle-btn").innerHTML = currentLang === "pt" ? "🇺🇸 English" : "🇧🇷 Português";
 
-        // Elementos de UI Geral
         document.getElementById("txt-title").innerText = t.title;
         document.getElementById("txt-subtitle").innerText = t.subtitle;
         document.getElementById("txt-sidebar-title").innerText = t.sidebarTitle;
         document.getElementById("lbl-upload").innerText = t.upload;
         document.getElementById("lbl-drag-text").innerText = t.dragText;
         document.getElementById("lbl-click-text").innerText = t.clickText;
+        document.getElementById("lbl-mount-type").innerText = t.mountType;
+        document.getElementById("opt-mount-glue").innerText = t.mountGlue;
+        document.getElementById("opt-mount-modules").innerText = t.mountModules;
+        document.getElementById("lbl-quality").innerText = t.quality;
         document.getElementById("lbl-orientation").innerText = t.orientation;
         document.getElementById("opt-portrait").innerText = t.portrait;
         document.getElementById("opt-landscape").innerText = t.landscape;
@@ -799,93 +776,82 @@
         document.getElementById("opt-cols").innerText = t.cols;
         document.getElementById("opt-rows").innerText = t.rows;
         document.getElementById("lbl-overlap").innerText = t.overlap;
+        document.getElementById("lbl-enable-grid").innerText = t.enableGrid;
+        document.getElementById("lbl-grid-color").innerText = t.gridColor;
+        document.getElementById("opt-grid-white").innerText = t.gridWhite;
+        document.getElementById("opt-grid-black").innerText = t.gridBlack;
+        document.getElementById("opt-grid-yellow").innerText = t.gridYellow;
+        document.getElementById("lbl-grid-size").innerText = t.gridSize;
+        document.getElementById("lbl-grid-size-hint").innerText = t.gridSizeHint;
+        document.getElementById("lbl-grid-width").innerText = t.gridWidth;
+
         document.getElementById("txt-preview-title").innerText = t.previewTitle;
         document.getElementById("txt-ad-placeholder").innerText = t.adPlaceholder;
         document.getElementById("txt-ad-placeholder-2").innerText = t.adPlaceholder;
 
-        // Atualização dinâmica do label da quantidade de páginas
         const mode = document.getElementById("size-mode").value;
         document.getElementById("size-value-label").innerText = mode === "cols" ? t.colsLabel : t.rowsLabel;
 
-        // Botão de Impressão
         const btnPrint = document.getElementById("btn-print-trigger");
         btnPrint.innerText = t.printBtn;
 
-        // Textos vazios
         if (!uploadedImageSrc) {
           document.getElementById("preview-grid").innerHTML = `<p style="color: var(--text-muted); padding: 40px; text-align: center;">${t.noImage}</p>`;
         } else {
-          // Atualiza as tags ou textos caso o arquivo já esteja ativo
-          const file = document.getElementById("map-upload").files[0];
-          if (file) {
-            document.getElementById("file-name").innerText = `${t.fileLoadedText}${file.name}`;
-          }
           renderMapPages();
         }
 
-        // Seção do Artigo
         document.getElementById("art-title").innerText = t.artTitle;
         document.getElementById("art-p1").innerText = t.artP1;
         document.getElementById("art-sub1").innerText = t.artSub1;
         document.getElementById("art-p2").innerText = t.artP2;
-        document.getElementById("art-sub2").innerText = t.artSub2;
-        document.getElementById("art-li1").innerHTML = `<strong>${t.artLi1.split(":")[0]}:</strong>${t.artLi1.split(":")[1]}`;
-        document.getElementById("art-li2").innerHTML = `<strong>${t.artLi2.split(":")[0]}:</strong>${t.artLi2.split(":")[1]}`;
-        document.getElementById("art-li3").innerHTML = `<strong>${t.artLi3.split(":")[0]}:</strong>${t.artLi3.split(":")[1]}`;
 
-        // FAQ
-        document.getElementById("txt-faq-header").innerText = t.faqHeader;
         document.getElementById("faq-q1").innerText = t.faqQ1;
         document.getElementById("faq-a1").innerText = t.faqA1;
-        document.getElementById("faq-q2").innerText = t.faqQ2;
-        document.getElementById("faq-a2").innerText = t.faqA2;
-        document.getElementById("faq-q3").innerText = t.faqQ3;
-        document.getElementById("faq-a3").innerText = t.faqA3;
 
-        // Footer e Modais
         document.getElementById("txt-copyright").innerText = t.copyright;
         document.getElementById("open-privacy").innerText = t.privacy;
         document.getElementById("open-terms").innerText = t.terms;
-
-        document.getElementById("modal-privacy-title").innerText = t.modalPrivacyTitle;
-        document.getElementById("modal-privacy-p1").innerText = t.modalPrivacyP1;
-        document.getElementById("modal-privacy-sub1").innerText = t.modalPrivacySub1;
-        document.getElementById("modal-privacy-p2").innerText = t.modalPrivacyP2;
-        document.getElementById("modal-privacy-sub2").innerText = t.modalPrivacySub3;
-        document.getElementById("modal-privacy-p3").innerText = t.modalPrivacyP3;
-
-        document.getElementById("modal-terms-title").innerText = t.modalTermsTitle;
-        document.getElementById("modal-terms-p1").innerText = t.modalTermsP1;
-        document.getElementById("modal-terms-sub1").innerText = t.modalTermsSub1;
-        document.getElementById("modal-terms-p2").innerText = t.modalTermsP2;
-        document.getElementById("modal-terms-sub2").innerText = t.modalTermsSub2;
-        document.getElementById("modal-terms-p3").innerText = t.modalTermsP3;
       }
 
-      /* --- INICIALIZAÇÃO E EVENTOS --- */
       document.getElementById("lang-toggle-btn").addEventListener("click", toggleLanguage);
 
       const mapUpload = document.getElementById("map-upload");
       const dropZone = document.getElementById("drop-zone");
       const fileNameEl = document.getElementById("file-name");
+      const mountTypeInput = document.getElementById("mount-type");
+      const qualityLevelInput = document.getElementById("quality-level");
       const orientationInput = document.getElementById("orientation");
       const sizeModeInput = document.getElementById("size-mode");
       const sizeValueInput = document.getElementById("size-value");
       const sizeValueLabel = document.getElementById("size-value-label");
       const overlapInput = document.getElementById("overlap");
+      const overlapGroup = document.getElementById("overlap-group");
+      const enableGridInput = document.getElementById("enable-grid");
+      const gridSettingsPanel = document.getElementById("grid-settings-panel");
+      const gridColorInput = document.getElementById("grid-color");
+      const gridSizeInput = document.getElementById("grid-size");
+      const gridStrokeWidthInput = document.getElementById("grid-stroke-width");
+
       const btnPrint = document.getElementById("btn-print-trigger");
       const previewGrid = document.getElementById("preview-grid");
-      const printContainer = document.getElementById("print-container");
       const gridInfo = document.getElementById("grid-info");
 
       let uploadedImageSrc = "";
+      let loadedImageElement = null;
       let originalWidth = 0;
       let originalHeight = 0;
 
-      const stylePageElement = document.createElement("style");
-      document.head.appendChild(stylePageElement);
+      enableGridInput.addEventListener("change", () => {
+        gridSettingsPanel.classList.toggle("active", enableGridInput.checked);
+        if (uploadedImageSrc) renderMapPages();
+      });
 
-      /* --- COMPORTAMENTO DRAG & DROP --- */
+      mountTypeInput.addEventListener("change", () => {
+        overlapGroup.style.display = (mountTypeInput.value === "modules") ? "none" : "flex";
+        if (uploadedImageSrc) renderMapPages();
+      });
+
       dropZone.addEventListener("click", () => mapUpload.click());
 
       dropZone.addEventListener("dragover", (e) => {
@@ -923,6 +889,7 @@
           const img = new Image();
           img.onload = function () {
             uploadedImageSrc = event.target.result;
+            loadedImageElement = img;
             originalWidth = img.width;
             originalHeight = img.height;
             btnPrint.disabled = false;
@@ -933,39 +900,249 @@
         reader.readAsDataURL(file);
       }
 
-      /* --- EVENTOS DOS CONTROLES --- */
       sizeModeInput.addEventListener("change", () => {
         const t = translations[currentLang];
         sizeValueLabel.innerText = sizeModeInput.value === "cols" ? t.colsLabel : t.rowsLabel;
         if (uploadedImageSrc) renderMapPages();
       });
 
-      [orientationInput, sizeValueInput, overlapInput].forEach((input) => {
+      [orientationInput, sizeValueInput, overlapInput, gridColorInput, gridSizeInput, gridStrokeWidthInput, qualityLevelInput].forEach((input) => {
         input.addEventListener("input", () => { if (uploadedImageSrc) renderMapPages(); });
         input.addEventListener("change", () => { if (uploadedImageSrc) renderMapPages(); });
       });
 
-      btnPrint.addEventListener("click", () => {
-        window.print();
+      // --- GERADOR DE IMAGENS HD COM SUPER-SAMPLING E UPSCALE ---
+      btnPrint.addEventListener("click", async () => {
+        if (!loadedImageElement) return;
+
+        const t = translations[currentLang];
+        btnPrint.innerText = t.generatingZip;
+        btnPrint.disabled = true;
+
+        setTimeout(async () => {
+          try {
+            const zip = new JSZip();
+            const orientation = orientationInput.value;
+            const sizeMode = sizeModeInput.value;
+            const sizeValue = parseInt(sizeValueInput.value) || 1;
+            const mountType = mountTypeInput.value;
+            const overlapMm = (mountType === "modules") ? 0 : (parseInt(overlapInput.value) || 0);
+
+            const isGridEnabled = enableGridInput.checked;
+            const gridColor = gridColorInput.value;
+            const gridSizeMm = parseFloat(gridSizeInput.value) || 25.4;
+            const gridStrokeWidth = parseFloat(gridStrokeWidthInput.value) || 1.2;
+
+            const isLandscape = orientation === "landscape";
+            const a4WMm = isLandscape ? 297 : 210;
+            const a4HMm = isLandscape ? 210 : 297;
+
+            const imgAspectRatio = originalWidth / originalHeight;
+
+            let cols = 1;
+            let rows = 1;
+            let totalWidthMm = 0;
+            let totalHeightMm = 0;
+
+            if (sizeMode === "cols") {
+              cols = sizeValue;
+              totalWidthMm = cols * a4WMm - (cols - 1) * overlapMm;
+              totalHeightMm = totalWidthMm / imgAspectRatio;
+              rows = Math.ceil((totalHeightMm - overlapMm) / (a4HMm - overlapMm));
+              if (rows < 1) rows = 1;
+            } else {
+              rows = sizeValue;
+              totalHeightMm = rows * a4HMm - (rows - 1) * overlapMm;
+              totalWidthMm = totalHeightMm * imgAspectRatio;
+              cols = Math.ceil((totalWidthMm - overlapMm) / (a4WMm - overlapMm));
+              if (cols < 1) cols = 1;
+            }
+
+            // Escala de Densidade selecionada para Upscale (DPI)
+            const dpiScale = parseFloat(qualityLevelInput.value) || 4.0; 
+            const pxPerMm = 3.7795275591 * dpiScale;
+
+            const pageCanvas = document.createElement("canvas");
+            pageCanvas.width = Math.round(a4WMm * pxPerMm);
+            pageCanvas.height = Math.round(a4HMm * pxPerMm);
+            const ctx = pageCanvas.getContext("2d");
+
+            // ATIVAÇÃO DE INTERPOLAÇÃO SMOOTHING/BICÚBICA NATIVA PARA EVITAR PIXELS SERRILHADOS
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = "high";
+
+            for (let r = 0; r < rows; r++) {
+              for (let c = 0; c < cols; c++) {
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+
+                const posX = c * (a4WMm - overlapMm);
+                const posY = r * (a4HMm - overlapMm);
+
+                const destW = totalWidthMm * pxPerMm;
+                const destH = totalHeightMm * pxPerMm;
+                const destX = -posX * pxPerMm;
+                const destY = -posY * pxPerMm;
+
+                // Desenha recorte da Imagem em HD com Interpolação
+                ctx.drawImage(loadedImageElement, destX, destY, destW, destH);
+
+                // Desenha Grid
+                if (isGridEnabled) {
+                  const activeWMm = (c < cols - 1) ? (a4WMm - overlapMm) : a4WMm;
+                  const activeHMm = (r < rows - 1) ? (a4HMm - overlapMm) : a4HMm;
+                  
+                  const squarePx = gridSizeMm * pxPerMm;
+                  const offsetX = (-posX * pxPerMm) % squarePx;
+                  const offsetY = (-posY * pxPerMm) % squarePx;
+
+                  let hexColor = "#ffffff";
+                  if (gridColor === "black") hexColor = "#000000";
+                  if (gridColor === "yellow") hexColor = "#e1b12c";
+
+                  ctx.save();
+                  ctx.beginPath();
+                  ctx.rect(0, 0, activeWMm * pxPerMm, activeHMm * pxPerMm);
+                  ctx.clip();
+
+                  ctx.strokeStyle = hexColor;
+                  ctx.lineWidth = gridStrokeWidth * (dpiScale / 2);
+                  ctx.globalAlpha = 0.85;
+
+                  const startX = (offsetX < 0) ? offsetX + squarePx : offsetX;
+                  for (let x = startX; x <= activeWMm * pxPerMm; x += squarePx) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, activeHMm * pxPerMm);
+                    ctx.stroke();
+                  }
+
+                  const startY = (offsetY < 0) ? offsetY + squarePx : offsetY;
+                  for (let y = startY; y <= activeHMm * pxPerMm; y += squarePx) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(activeWMm * pxPerMm, y);
+                    ctx.stroke();
+                  }
+
+                  ctx.restore();
+                }
+
+                // Desenha Máscara Adesiva
+                if (overlapMm > 0) {
+                  ctx.font = `bold ${11 * dpiScale}px sans-serif`;
+                  ctx.fillStyle = "#555555";
+                  ctx.textAlign = "center";
+                  ctx.textBaseline = "middle";
+
+                  if (c < cols - 1) {
+                    const maskX = (a4WMm - overlapMm) * pxPerMm;
+                    const maskW = overlapMm * pxPerMm;
+                    const maskH = a4HMm * pxPerMm;
+
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+                    ctx.fillRect(maskX, 0, maskW, maskH);
+                    
+                    ctx.strokeStyle = "#999999";
+                    ctx.lineWidth = 1 * dpiScale;
+                    ctx.setLineDash([4 * dpiScale, 4 * dpiScale]);
+                    ctx.strokeRect(maskX, 0, maskW, maskH);
+                    ctx.setLineDash([]);
+
+                    ctx.fillStyle = "#555555";
+                    ctx.fillText(t.glueText, maskX + maskW / 2, maskH / 2);
+                  }
+
+                  if (r < rows - 1) {
+                    const maskY = (a4HMm - overlapMm) * pxPerMm;
+                    const maskW = a4WMm * pxPerMm;
+                    const maskH = overlapMm * pxPerMm;
+
+                    ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+                    ctx.fillRect(0, maskY, maskW, maskH);
+
+                    ctx.strokeStyle = "#999999";
+                    ctx.lineWidth = 1 * dpiScale;
+                    ctx.setLineDash([4 * dpiScale, 4 * dpiScale]);
+                    ctx.strokeRect(0, maskY, maskW, maskH);
+                    ctx.setLineDash([]);
+
+                    ctx.fillStyle = "#555555";
+                    ctx.fillText(t.glueText, maskW / 2, maskY + maskH / 2);
+                  }
+                }
+
+                // Converte Canvas para JPG e compacta no ZIP
+                const imgDataUrl = pageCanvas.toDataURL("image/jpeg", 0.98);
+                const base64Data = imgDataUrl.replace(/^data:image\/jpeg;base64,/, "");
+                zip.file(`pagina_linha${r + 1}_coluna${c + 1}.jpg`, base64Data, { base64: true });
+              }
+            }
+
+            const content = await zip.generateAsync({ type: "blob" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(content);
+            link.download = "mapa-rpg-hd.zip";
+            link.click();
+            URL.revokeObjectURL(link.href);
+
+          } catch (e) {
+            console.error(e);
+            alert("Erro ao processar as imagens HD.");
+          } finally {
+            btnPrint.innerText = t.printBtn;
+            btnPrint.disabled = false;
+          }
+        }, 100);
       });
 
-      /* --- LÓGICA DE RENDERIZAÇÃO --- */
+      function createGridOverlaySVG(a4WMm, a4HMm, activeWMm, activeHMm, posX, posY, gridSizeMm, strokeColor, strokeWidth, scale) {
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.classList.add("grid-overlay");
+        
+        svg.style.width = `${activeWMm * scale}px`;
+        svg.style.height = `${activeHMm * scale}px`;
+
+        const patternId = "grid-pattern-" + Math.random().toString(36).substring(2, 9);
+        const squarePx = gridSizeMm * scale;
+        
+        const patternOffsetX = (-posX * scale) % squarePx;
+        const patternOffsetY = (-posY * scale) % squarePx;
+
+        let hexColor = "#ffffff";
+        if (strokeColor === "black") hexColor = "#000000";
+        if (strokeColor === "yellow") hexColor = "#e1b12c";
+
+        svg.innerHTML = `
+          <defs>
+            <pattern id="${patternId}" width="${squarePx}" height="${squarePx}" patternUnits="userSpaceOnUse" x="${patternOffsetX}" y="${patternOffsetY}">
+              <path d="M ${squarePx} 0 L 0 0 0 ${squarePx}" fill="none" stroke="${hexColor}" stroke-width="${strokeWidth}" opacity="0.8" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#${patternId})" />
+        `;
+        return svg;
+      }
+
       function renderMapPages() {
         const orientation = orientationInput.value;
         const sizeMode = sizeModeInput.value;
         const sizeValue = parseInt(sizeValueInput.value) || 1;
-        const overlapMm = parseInt(overlapInput.value) || 0;
+        const mountType = mountTypeInput.value;
+        const overlapMm = (mountType === "modules") ? 0 : (parseInt(overlapInput.value) || 0);
+        
+        const isGridEnabled = enableGridInput.checked;
+        const gridColor = gridColorInput.value;
+        const gridSizeMm = parseFloat(gridSizeInput.value) || 25.4;
+        const gridStrokeWidth = parseFloat(gridStrokeWidthInput.value) || 1.2;
         const t = translations[currentLang];
 
         previewGrid.innerHTML = "";
-        printContainer.innerHTML = "";
 
         const isLandscape = orientation === "landscape";
         const a4WidthMm = isLandscape ? 297 : 210;
         const a4HeightMm = isLandscape ? 210 : 297;
         const previewWidthPx = isLandscape ? 254 : 180;
-
-        stylePageElement.innerHTML = `@media print { @page { size: A4 ${orientation}; margin: 0; } }`;
 
         const imgAspectRatio = originalWidth / originalHeight;
 
@@ -1000,7 +1177,9 @@
             const posX = c * (a4WidthMm - overlapMm);
             const posY = r * (a4HeightMm - overlapMm);
 
-            // Prévia
+            const activeWMm = (c < cols - 1) ? (a4WidthMm - overlapMm) : a4WidthMm;
+            const activeHMm = (r < rows - 1) ? (a4HeightMm - overlapMm) : a4HeightMm;
+
             const previewPage = document.createElement("div");
             previewPage.classList.add("preview-page", orientation);
 
@@ -1016,30 +1195,15 @@
 
             previewPage.appendChild(previewImg);
 
+            if (isGridEnabled) {
+              const previewGridOverlay = createGridOverlaySVG(a4WidthMm, a4HeightMm, activeWMm, activeHMm, posX, posY, gridSizeMm, gridColor, gridStrokeWidth, previewScale);
+              previewPage.appendChild(previewGridOverlay);
+            }
+
             if (overlapMm > 0) {
               createOverlapMasks(previewPage, r, c, rows, cols, overlapMm, previewScale, false);
             }
             previewGrid.appendChild(previewPage);
-
-            // Impressão Física
-            const printPage = document.createElement("div");
-            printPage.classList.add("print-page", orientation);
-
-            const printImg = document.createElement("img");
-            printImg.src = uploadedImageSrc;
-            printImg.classList.add("print-page-img");
-
-            printImg.style.width = `${totalWidthMm}mm`;
-            printImg.style.height = `${totalHeightMm}mm`;
-            printImg.style.left = `-${posX}mm`;
-            printImg.style.top = `-${posY}mm`;
-
-            printPage.appendChild(printImg);
-
-            if (overlapMm > 0) {
-              createOverlapMasks(printPage, r, c, rows, cols, overlapMm, 1, true);
-            }
-            printContainer.appendChild(printPage);
           }
         }
       }
@@ -1072,16 +1236,13 @@
         }
       }
 
-      /* --- COMPORTAMENTO FAQ --- */
       const faqQuestions = document.querySelectorAll('.faq-question');
       faqQuestions.forEach(question => {
         question.addEventListener('click', () => {
-          const item = question.parentElement;
-          item.classList.toggle('active');
+          question.parentElement.classList.toggle('active');
         });
       });
 
-      /* --- MODAIS --- */
       const modalPrivacy = document.getElementById("modal-privacy");
       const modalTerms = document.getElementById("modal-terms");
 
@@ -1097,7 +1258,6 @@
         if (e.target === modalTerms) closeModal("modal-terms");
       });
 
-      // Executa o idioma inicial na carga da página
       applyTranslations();
     </script>
   </body>
